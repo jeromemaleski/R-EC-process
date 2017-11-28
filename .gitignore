@@ -86,6 +86,7 @@ vignettes/*.pdf
 #ignore data and out files
 /out
 /data
+/plots
 
 
-
+.Rproj.user
