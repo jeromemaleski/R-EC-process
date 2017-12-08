@@ -40,7 +40,7 @@ dt<-as.data.frame(dt,tz="America/New_York")
 EC_Data<-bind_cols(dt,EC_Data)
 
 #creat posix time for Biomet
-dt <- as.POSIXct(Met_Data1[, "TIMESTAMP"],"%m/%d/%Y %H:%M:%S")
+#dt <- as.POSIXct(Met_Data1[, "TIMESTAMP"],"%m/%d/%Y %H:%M:%S")
 dt <- as.POSIXct(Met_Data1[, "TIMESTAMP"],"%Y-%m-%d %H:%M:%S")
 dt<-as.data.frame(dt,tz="America/New_York")
 Met_Data<-bind_cols(dt,Met_Data1)

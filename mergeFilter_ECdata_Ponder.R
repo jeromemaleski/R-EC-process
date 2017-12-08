@@ -1,6 +1,6 @@
 ####
 #merge and filter EC and biomet data for
-#ogletree and ponder stations
+#ponder 
 #
 #
 #last edit 10/02/2017
@@ -27,23 +27,26 @@ GetData <- function(f2g){
 }
 
 #get station EC out
-EC_Data1<-GetData("data/ogletreeEddyproOut.csv")
+EC_Data1<-GetData("data/ponderEddyproOut.csv")
 
 # get station biomet
-Met_Data1<-GetData("data/ogletreeBiomet.csv")
+Met_Data1<-GetData("data/ponderBiomet.csv")
+
+
+#creat posix time for Biomet
+#dt <- as.POSIXct(Met_Data1[, "TIMESTAMP"],"%m/%d/%Y %H:%M:%S")
+dt <- as.POSIXct(Met_Data1[, "TIMESTAMP"],"%Y-%m-%d %H:%M:%S")
+dt<-as.data.frame(dt,tz="America/New_York")
+Met_Data<-bind_cols(dt,Met_Data1)
 
 #create posix time for both files to merge on
 #create posix time for EC
 EC_Data<-unite_(EC_Data1,"date",c("date","time")," ")
-dt <- as.POSIXct(EC_Data[, "date"],"%Y-%m-%d %H:%M:%S")
+dt <- as.POSIXct(EC_Data[, "date"],"%Y-%m-%d %H:%M")
 dt<-as.data.frame(dt,tz="America/New_York")
 EC_Data<-bind_cols(dt,EC_Data)
 
-#creat posix time for Biomet
-dt <- as.POSIXct(Met_Data1[, "TIMESTAMP"],"%m/%d/%Y %H:%M:%S")
-dt <- as.POSIXct(Met_Data1[, "TIMESTAMP"],"%Y-%m-%d %H:%M:%S")
-dt<-as.data.frame(dt,tz="America/New_York")
-Met_Data<-bind_cols(dt,Met_Data1)
+
 
 #the cambell biomet data has many calculations including 
 #all the sonic calculations subset to only the biomet data
@@ -112,19 +115,22 @@ sum(!is.na(W_Data$co2_flux))
 W_Data$LE[W_Data$qc_LE>1] <- NA
 W_Data$co2_flux[W_Data$qc_co2_flux>1] <- NA
 
-#filter flux on footprint 120m radius 70%
+#filter flux on footprint 260 to 90 between 5-19-2016 and 8-5-2016
+#                       wind_dir > 260 ~ NA,
+#                       wind_dir < 90  ~ NA
+#ggplot(W_Data,aes(x=dt,y=co2_flux))+geom_point()
 
-sum(W_Data$x_70>120, na.rm = TRUE)
-#more strict
-#sum(W_Data$x_90>120, na.rm = TRUE)
 
-W_Data$LE[W_Data$x_70>120] <- NA
-W_Data$co2_flux[W_Data$x_70>120] <- NA
+ft<-filter(W_Data,(wind_dir>260 & dt >= start & dt <= end))
 
-#filter flux on sensor faceing 190 filter behind tower 350 to 20 degree
+start="2016-5-19 00:00"
+end="2016-8-5 23:30"  
+W_Data$co2_flux[W_Data$wind_dir>260 & W_Data$dt >= start & W_Data$dt <= end] <- NA
+W_Data$co2_flux[W_Data$wind_dir<90 & W_Data$dt >= start & W_Data$dt <= end] <- NA
 
-W_Data$LE[W_Data$wind_dir>350] <- NA
-W_Data$co2_flux[W_Data$wind_dir<20] <- NA
+
+W_Data$LE[W_Data$wind_dir>260 & W_Data$dt >= start & W_Data$dt <= end] <- NA
+W_Data$LE[W_Data$wind_dir<90 & W_Data$dt >= start & W_Data$dt <= end] <- NA
 
 
 # EddyP.f %>% mutate(EddyP.f$LE,LE1 = case_when(
@@ -137,6 +143,19 @@ W_Data$co2_flux[W_Data$wind_dir<20] <- NA
 # )
 # ?mutate
 # ?case_when
+
+#remove flux between 5/11/2016 and 5/19/2016 becasue irgason was to low compared to plant 
+end="2016-5-19 16:00"
+start="2016-5-11 00:00"  
+W_Data$LE[W_Data$dt >= start & W_Data$dt <= end] <- NA
+W_Data$LE[W_Data$dt >= start & W_Data$dt <= end] <- NA
+
+
+W_Data$LE[W_Data$wind_dir>260 & dt >= start & dt <= end] <- NA
+W_Data$LE[W_Data$wind_dir<90 & dt >= start & dt <= end] <- NA
+
+
+
 
 #max min filters
 
@@ -168,7 +187,7 @@ W_Data$Rs_incoming_Avg[W_Data$Rs_incoming_Avg<0] <- 0
 
 
 
-#ggplot(W_Data,aes(x=dt,y=co2_flux))+geom_point()
+#ggplot(W_Data,aes(x=dt,y=T_tmpr_rh_mean))+geom_point()
 
 #check max and min air
 #remove air temp < -30 and > 50 C
@@ -208,6 +227,7 @@ min(W_Data$RH,na.rm=TRUE)
 max(W_Data$RH_tmpr_rh_mean,na.rm=TRUE)
 min(W_Data$RH_tmpr_rh_mean,na.rm=TRUE)
 
+W_Data$RH_tmpr_rh_mean[W_Data$RH_tmpr_rh_mean>100] <- 100
 
 #ggplot(W_Data,aes(x=dt,y=RH_tmpr_rh_mean))+geom_point()
 #ggplot(W_Data,aes(x=dt,y=RH))+geom_point()
@@ -271,7 +291,7 @@ S_Data<-select(W_Data,Year,DoY,Hour,NEE=co2_flux,LE,H,Ustar,Rg=Rs_incoming_Avg,R
 
 #ReddyProc needs full days start at 0 end at 23.5
 # trim to start and end
-S_Data<-filter(S_Data,Year==2015 & DoY>181 | Year==2016 )
+S_Data<-filter(S_Data,Year==2015 & DoY>223 | Year==2016 )
 #S_Data<-slice(S_Data,2:nrow(S_Data))
 
 #ReddyProc header
@@ -290,7 +310,7 @@ write.csv3 <- function(d, file, hd, ut) {
   write.table(d, file, sep="\t", append = TRUE, col.names = FALSE, row.names = FALSE, quote = FALSE)
 }
 
-write.csv3(S_Data, "out/ogletreeFilt70RprocIn.txt", head1[1:15], head2[1:15]) 
+write.csv3(S_Data, "out/ponderFiltRprocIn.txt", head1[1:15], head2[1:15]) 
 
 
 
