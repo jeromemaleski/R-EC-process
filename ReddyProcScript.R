@@ -6,6 +6,7 @@
 #   5. save
 
 rm(list = ls())
+#install.packages("REddyProc", repos=c("http://R-Forge.R-project.org","@CRAN@"))
 library("REddyProc")
 
 #+++ Load data with one header and one unit row from (tab-delimited) text file
@@ -27,8 +28,10 @@ EddyProc.C$sSetLocationInfo(Lat_deg.n=51.0, Long_deg.n=13.6, TimeZone_h.n=1)  #L
 ##Section 1 Load
   
 #+++ Load data with one header and one unit row from (tab-delimited) text file
+
 #EddyData.F <- fLoadTXTIntoDataframe('out/ogletreeFilt70RprocIn.txt')
-EddyData.F <- fLoadTXTIntoDataframe('out/ponderFiltRprocIn.txt')
+EddyData.F <- fLoadTXTIntoDataframe('out/ogletreeFilt70RprocIn.txt')
+#EddyData.F <- fLoadTXTIntoDataframe('out/ponderFiltRprocIn.txt')
 
 #+++ If not provided, calculate VPD from Tair and rH
 EddyData.F <- cbind(EddyData.F,VPD=fCalcVPDfromRHandTair(EddyData.F$rH, EddyData.F$Tair))
@@ -38,7 +41,11 @@ EddyDataWithPosix.F <- fConvertTimeToPosix(EddyData.F, 'YDH', Year.s='Year', Day
   
 #+++ Initalize R5 reference class sEddyProc for processing of eddy data
 #+++ with all variables needed for processing later
-EddyProc.C <- sEddyProc$new('Ogletree', EddyDataWithPosix.F, c('NEE','LE','Rg','Tair','VPD', 'Ustar'))
+
+#EddyProc.C <- sEddyProc$new('Ogletree', EddyDataWithPosix.F, c('NEE','LE','Rg','Tair','VPD', 'Ustar'))
+
+EddyProc.C <- sEddyProc$new('Ogletree', EddyDataWithPosix.F, c('NEE','LE',"H",'Rg',"rH",'Tair',"Tsoil",'VPD', 'Ustar'))
+
 EddyProc.C$sSetLocationInfo(Lat_deg.n=31.44, Long_deg.n=(-83.85), TimeZone_h.n=(-5))  #Location of Ogletree
 
 ##Section 2 UStar Filter
@@ -51,8 +58,16 @@ EddyProc.C$sSetLocationInfo(Lat_deg.n=31.44, Long_deg.n=(-83.85), TimeZone_h.n=(
 # for other options see Example 4
 EddyProc.C$sMDSGapFillAfterUstar('NEE', UstarThres.df=0.11)
 EddyProc.C$sMDSGapFillAfterUstar('LE', UstarThres.df=0.11)
+
 colnames(EddyProc.C$sExportResults()) # Note the collumns with suffix _WithUstar	
+
+EddyProc.C$sMDSGapFillAfterUstar('H', UstarThres.df=0.11)
+EddyProc.C$sMDSGapFill('Rg', FillAll.b=FALSE)
+EddyProc.C$sMDSGapFill('rH', FillAll.b=FALSE)
+
 EddyProc.C$sMDSGapFill('Tair', FillAll.b=FALSE)
+EddyProc.C$sMDSGapFill('Tsoil', FillAll.b=FALSE)
+EddyProc.C$sMDSGapFill('VPD', FillAll.b=FALSE)
 
 EddyProc.C$sMRFluxPartition(Suffix.s='WithUstar')  # Note suffix
 
@@ -62,6 +77,173 @@ FilledEddyData.F <- EddyProc.C$sExportResults()
 CombinedData.F <- cbind(EddyDataWithPosix.F, FilledEddyData.F)
 fWriteDataframeToFile(CombinedData.F, 'PonderResults.txt', 'out')
 
+colnames(EddyProc.C$sExportResults()) # Note the collumns with suffix _WithUstar	
+#EddyProc.C$sMDSGapFill('Tair', FillAll.b=FALSE)
+
+EddyProc.C$sMRFluxPartition(Suffix.s='WithUstar')  # Note suffix
+
+#+++ Export gap filled and partitioned data to standard data frame
+FilledEddyData.F <- EddyProc.C$sExportResults()
+#+++ Save results into (tab-delimited) text file in directory \out
+CombinedData.F <- cbind(EddyDataWithPosix.F, FilledEddyData.F)
+fWriteDataframeToFile(CombinedData.F, 'OgletreeResults.txt', 'out')
+
+
+###########
+
+#?fWriteDataframeToFile
+
+
+#+++ May rename variables to correspond to Ameriflux 
+colnames(CombinedDataAmeriflux.F <- renameVariablesInDataframe(CombinedData.F, getBGC05ToAmerifluxVariableNameMapping() ))
+CombinedDataAmeriflux.F$TIMESTAMP_END <- POSIXctToBerkeleyJulianDate( EddyProc.C$sExportData()[[1]] )
+head(tmp <- BerkeleyJulianDateToPOSIXct( CombinedDataAmeriflux.F$TIMESTAMP_END ))
+#colnames(tmp <- renameVariablesInDataframe(CombinedData.F, getAmerifluxToBGC05VariableNameMapping() ))
+fWriteDataframeToFile(CombinedData.F, 'DE-Tha-Results.txt', 'out')
+
+#plotting
+#diurnal cycle
+EddyProc.C$sPlotDiurnalCycle('NEE_WithUstar_f')
+EddyProc.C$sPlotDiurnalCycle('LE_WithUstar_f')
+EddyProc.C$sPlotDiurnalCycle('H_WithUstar_f')
+EddyProc.C$sPlotDiurnalCycle('Rg_f')
+EddyProc.C$sPlotDiurnalCycle('rH_f')
+EddyProc.C$sPlotDiurnalCycle('Tair_f')
+EddyProc.C$sPlotDiurnalCycle('Tsoil_f')
+EddyProc.C$sPlotDiurnalCycle('VPD_f')
+EddyProc.C$sPlotDiurnalCycle('Rg')
+EddyProc.C$sPlotDiurnalCycle('rH')
+EddyProc.C$sPlotDiurnalCycle('Tair')
+EddyProc.C$sPlotDiurnalCycle('Tsoil')
+EddyProc.C$sPlotDiurnalCycle('VPD')
+
+#daily sum
+EddyProc.C$sPlotDailySums('NEE_WithUstar_f')
+EddyProc.C$sPlotDailySums('LE_WithUstar_f')
+EddyProc.C$sPlotDailySums('H_WithUstar_f')
+EddyProc.C$sPlotDailySums('NEE_WithUstar_f',VarUnc.s="NEE_WithUstar_fsd")
+EddyProc.C$sPlotDailySums('LE_WithUstar_f',VarUnc.s="LE_WithUstar_fsd")
+EddyProc.C$sPlotDailySums('H_WithUstar_f',VarUnc.s="H_WithUstar_fsd")
+EddyProc.C$sPlotDailySums('Rg_f')
+EddyProc.C$sPlotDailySums('rH_f')
+EddyProc.C$sPlotDailySums('Tair_f')
+EddyProc.C$sPlotDailySums('Tsoil_f')
+EddyProc.C$sPlotDailySums('VPD_f')
+
+
+#hhflux
+EddyProc.C$sPlotHHFluxes('NEE_WithUstar_f')
+EddyProc.C$sPlotDiurnalCycle('NEE')
+EddyProc.C$sPlotDiurnalCycle('LE_WithUstar_f')
+EddyProc.C$sPlotDiurnalCycle('LE')
+EddyProc.C$sPlotDiurnalCycle('H_WithUstar_f')
+EddyProc.C$sPlotDiurnalCycle('H')
+
+#fingerprint
+EddyProc.C$sPlotFingerprint('NEE_WithUstar_orig')
+EddyProc.C$sPlotFingerprint('NEE_WithUstar_f')
+EddyProc.C$sPlotFingerprint('LE_WithUstar_orig')
+EddyProc.C$sPlotFingerprint('LE_WithUstar_f')
+EddyProc.C$sPlotFingerprint('H_WithUstar_orig')
+EddyProc.C$sPlotFingerprint('H_WithUstar_f')
+
+
+#plotting
+
+#NEE
+EddyProc.C$sPlotHHFluxesY('NEE', Year.i=2015)
+EddyProc.C$sPlotHHFluxesY('NEE_WithUstar_f', Year.i=2015)
+EddyProc.C$sPlotHHFluxesY('NEE', Year.i=2016)
+EddyProc.C$sPlotHHFluxesY('NEE_WithUstar_f', Year.i=2016)
+EddyProc.C$sPlotHHFluxes('NEE_WithUstar_f')
+
+
+EddyProc.C$sPlotDiurnalCycle('NEE')
+
+EddyProc.C$sPlotFingerprint('NEE')
+EddyProc.C$sPlotFingerprint('NEE_WithUstar_orig')
+EddyProc.C$sPlotFingerprint('NEE_WithUstar_f')
+
+EddyProc.C$sPlotDailySums('NEE_WithUstar_f',VarUnc.s="NEE_WithUstar_fsd")
+
+EddyProc.C$sPlotDiurnalCycle('NEE_WithUstar_f')
+
+
+
+?sPlotHHFluxesY
+?sPlotDailySums
+?sPlotDiurnalCycle
+?sPlotHHFluxes
+
+
+
+#LE
+
+#partition
+
+EddyProc.C$sPlotHHFluxesY('Reco_WithUstar', Year.i=2015)
+EddyProc.C$sPlotHHFluxesY('Reco_WithUstar', Year.i=2016)
+
+EddyProc.C$sPlotHHFluxesY('GPP_WithUstar_f', Year.i=2015)
+EddyProc.C$sPlotHHFluxesY('GPP_WithUstar_f', Year.i=2016)
+
+EddyProc.C$sPlotFingerprint('Reco_WithUstar')
+EddyProc.C$sPlotFingerprint('GPP_WithUstar_f')
+
+
+
+
+
+
+EddyProc.C$sPlotHHFluxesY('NEE', Year.i=2015)
+EddyProc.C$sPlotHHFluxesY('NEE_WithUstar_f', Year.i=2015)
+EddyProc.C$sPlotHHFluxesY('NEE', Year.i=2016)
+EddyProc.C$sPlotHHFluxesY('NEE_WithUstar_f', Year.i=2016)
+
+EddyProc.C$sPlotHHFluxesY('Reco_WithUstar', Year.i=2015)
+EddyProc.C$sPlotHHFluxesY('Reco_WithUstar', Year.i=2016)
+
+EddyProc.C$sPlotHHFluxesY('GPP_WithUstar_f', Year.i=2015)
+EddyProc.C$sPlotHHFluxesY('GPP_WithUstar_f', Year.i=2016)
+
+
+EddyProc.C$sPlotFingerprint('NEE')
+EddyProc.C$sPlotFingerprint('NEE_WithUstar_orig')
+EddyProc.C$sPlotFingerprint('NEE_WithUstar_f')
+EddyProc.C$sPlotFingerprint('Reco_WithUstar')
+EddyProc.C$sPlotFingerprint('GPP_WithUstar_f')
+
+
+
+
+
+EddyProc.C$sPlotHHFluxesY('Rg', Year.i=2016)
+EddyProc.C$sPlotHHFluxesY('Tair', Year.i=2016)
+EddyProc.C$sPlotHHFluxesY('NEE', Year.i=2016)
+EddyProc.C$sPlotFingerprintY('NEE', Year.i=2016)
+
+
+EddyProc.C$sPlotDiurnalCycle('Tair')
+EddyProc.C$sPlotDiurnalCycle('NEE')
+
+#after fill
+
+#EddyProc.C$sPlotHHFluxesY('Rg_f', Year.i=2016)
+EddyProc.C$sPlotHHFluxesY('Tair_f', Year.i=2016)
+EddyProc.C$sPlotHHFluxesY('NEE_WithUstar_f', Year.i=2016)
+EddyProc.C$sPlotFingerprintY('NEE_f', Year.i=2016)
+
+EddyProc.C$sPlotDiurnalCycle('NEE_f')
+EddyProc.C$sPlotDiurnalCycle('Tair_f')
+
+
+? sMDSGapFillAfterUstar
+? sMRFluxPartition
+
+
+
+EddyProc.C$sPlotDiurnalCycleM('NEE', Month.i=1)
+EddyProc.C$sPlotDiurnalCycleM('Tair', Month.i=1)
 
 ###########
 

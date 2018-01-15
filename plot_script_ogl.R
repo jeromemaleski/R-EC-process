@@ -19,14 +19,16 @@ data2 <- read_tsv(
 )
 
 #get header
-hhh <- read.table("out/OgeltreeResults.txt",sep="\t", skip = 0, nrows = 1) # get the header
+hhh <- read.table("out/OgletreeResults.txt",sep="\t", skip = 0, nrows = 1) # get the header
 header <- lapply(hhh, as.character)
 colnames(data2) <- header #put the header on Data
 
 #recode -9999  NA
 data2[data2==-9999] <- NA
 
-data2
+#rainfall NA to 0
+data2$Rain[is.na(data2$Rain)]<-0
+
 
 #change some column names
 #change column names that R cant work with
@@ -36,11 +38,31 @@ names(data2)[names(data2) == 'Date Time'] <- 'dt'
 data2 %>% mutate(NEEgmhh=((NEE_WithUstar_f*44.01*60*30) /(10^6)))->data2
 data2 %>% mutate(GPPgmhh=((GPP_WithUstar_f*44.01*60*30) /(10^6)))->data2
 data2 %>% mutate(Recogmhh=((Reco_WithUstar*44.01*60*30) /(10^6)))->data2
-#rho=1000 kg/m3 Lv = 2.5*10^6    1000*2.5*10^6*(1/1000)
 
+#rho=1000 kg/m3 Lv = 2.5*10^6   
+# H= rho * lv * E
+# E=H/(rho *Lv)    -> E mm/hh = H W/m2/s (60s)(30m) / (1000kg/m3*2.5*10^6(kg m2/s)/kg*(1mm/1000m))
 #  H/rho = E conver to mm per m2 per hh
+# H is W/m2/hh
+
+LE=279
+ET=0.413
+ETC=((LE*60*60) /(2.5*10^6))
+
+
 
 data2 %>% mutate(LEgmhh=((LE_WithUstar_f*60*30) /(2.5*10^6)))->data2
+
+
+
+#p<-ggplot(data2,aes(x=dt,y=cumsum(LEgmhh)))+geom_point()+y=data2$LEgmhh
+ggplot(data2, aes(dt)) + 
+  geom_line(aes(y = cumsum(LEgmhh))) + 
+  geom_line(aes(y = cumsum(Rain)))
+
+ggplot(data2, aes(dt)) + 
+  
+  geom_line(aes(y = cumsum(Rain)))
 
 
 #dates
@@ -50,7 +72,6 @@ maizeHarvest=as.numeric(strptime("2016-08-08","%Y-%m-%d"))
 miscanthusHarvestF2015=as.numeric(strptime("2015-09-22","%Y-%m-%d"))
 miscanthusHarvestS2016=as.numeric(strptime("2016-06-09","%Y-%m-%d"))
 miscanthusHarvestF2016=as.numeric(strptime("2016-10-03","%Y-%m-%d"))
-
 
 
 #annual sums
@@ -67,17 +88,55 @@ data2 %>% mutate (cumReco=cumsum(Recogmhh)) ->data2
 
 
 
-#data2 %>% group_by(Year) %>% mutate (cumNEE=cumsum(NEEgmhh)) ->data2
-#data2 %>% group_by(Year) %>% mutate (cumLE=cumsum(LEgmhh)) ->data2
+data2 %>% group_by(Year) %>% mutate (cumNEE=cumsum(NEEgmhh)) ->data2
+data2 %>% group_by(Year) %>% mutate (cumLE=cumsum(LEgmhh)) ->data2
 
 data2_2015<-filter(data2,Year==2015)
 data2_2016<-filter(data2,Year==2016)
+
+
+#misc fall 2015
+filter(data2,Year==2015) %>% filter(dt<="2015-09-22")->miscF2015
+
+
+#misc summer 2016
+filter(data2,Year==2016) %>% filter(dt>="2016-04-05") %>% filter(dt<="2016-06-09")->miscS2016
+
+
+#misc fall 2016
+filter(data2,Year==2016) %>% filter(dt>="2016-07-01") %>% filter(dt<="2016-10-03")->miscF2016
+
+
+#maize summer 2016
+
+
+sum(miscF2015$LEgmhh)
+sum(miscF2015$NEEgmhh)
+sum(miscF2015$GPPgmhh)
+sum(miscF2015$Recogmhh)
+sum(miscF2015$Rain,na.rm=TRUE)
+
+sum(miscS2016$LEgmhh)
+sum(miscS2016$NEEgmhh)
+sum(miscS2016$GPPgmhh)
+sum(miscS2016$Recogmhh)
+sum(miscS2016$Rain,na.rm=TRUE)
+
+sum(miscF2016$LEgmhh)
+sum(miscF2016$NEEgmhh)
+sum(miscF2016$GPPgmhh)
+sum(miscF2016$Recogmhh)
+sum(miscF2016$Rain,na.rm=TRUE)
+
+
+
+
 
 sum(data2_2015$LEgmhh)
 sum(data2_2015$NEEgmhh)
 sum(data2_2016$LEgmhh)
 sum(data2_2016$NEEgmhh)
-
+sum(data2_2016$Rain,na.rm=TRUE)
 
 
 
@@ -94,7 +153,10 @@ p + theme_tufte() + geom_rangeframe()+ggtitle("a) Miscanthus")+
 p<-ggplot(data2,aes(x=dt,y=LE_WithUstar_f))+
   geom_point()
 
-p
+p<-ggplot(data2,aes(x=dt,y=Rain))+
+  geom_point()
+
+
 
 p<-ggplot(data2,aes(x=dt,y=Reco_WithUstar))+
   geom_point()
@@ -104,20 +166,22 @@ p
 p<-ggplot(data2,aes(x=dt,y=GPP_WithUstar_f))+
   geom_point()
 
-
+###ogletree
+#+scale_x_datetime(labels=date_format("%b"),breaks=date_breaks("1 month"))
 #cumulative sum plot
 
 p<-ggplot(data2,aes(x=dt,y=cumNEE*.01))+
-  geom_point()+
+  geom_line()+ylim(-25, 5)+scale_x_datetime(labels=date_format("%b%y"),breaks=date_breaks("2 month"))+
   geom_vline(xintercept=miscanthusHarvestF2015, linetype="dotdash")+
   geom_vline(xintercept=miscanthusHarvestF2016, linetype="dotdash")+
   geom_vline(xintercept=miscanthusHarvestS2016, linetype="dotdash")
 
-p + theme_tufte() + geom_rangeframe()+ggtitle("a) Miscanthus")+
+p +  theme_minimal() +ggtitle("a) Miscanthus")+
   xlab("")+ylab("cumulative NEE (Mg C ha-1)")
 
-ggsave("out/OgletreeCumNEE.pdf",useDingbats=FALSE)
+ggsave("out/NOgletreeCumNEE.pdf",useDingbats=FALSE)
 ##LE
+
 p<-ggplot(data2,aes(x=dt,y=cumLE))+
   geom_point()+
   geom_vline(xintercept=miscanthusHarvestF2015, linetype="dotdash")+
@@ -154,6 +218,25 @@ p + theme_tufte() + geom_rangeframe()+ggtitle("a) Miscanthus")+
 ggsave("out/OgletreeCumReco.pdf",useDingbats=FALSE)
 
 p
+
+
+
+
+####ponder
+
+p<-ggplot(data2_2016,aes(x=dt,y=cumNEE*.01))+
+  geom_line()+ylim(-25, 5)+scale_x_datetime(labels=date_format("%b-%y"),breaks=date_breaks("2 month"))+
+  geom_vline(xintercept=miscanthusHarvestF2015, linetype="dotdash")+
+  geom_vline(xintercept=miscanthusHarvestF2016, linetype="dotdash")+
+  geom_vline(xintercept=miscanthusHarvestS2016, linetype="dotdash")
+
+p +  theme_minimal() +ggtitle("b) Maize")+
+  xlab("")+ylab("cumulative NEE (Mg C ha-1)")
+
+ggsave("out/NPonderCumNEE.pdf",useDingbats=FALSE)
+
+
+
 
 
 summarise(data2,mean(NEE, na.rm=TRUE))

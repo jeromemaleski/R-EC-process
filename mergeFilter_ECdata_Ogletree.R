@@ -109,6 +109,7 @@ sum(!is.na(W_Data$co2_flux))
 #sum(W_Data$qc_LE>1, na.rm = TRUE)
 #sum(W_Data$qc_co2_flux>1, na.rm = TRUE)
 
+W_Data$LE[W_Data$qc_H>1] <- NA
 W_Data$LE[W_Data$qc_LE>1] <- NA
 W_Data$co2_flux[W_Data$qc_co2_flux>1] <- NA
 
@@ -118,10 +119,14 @@ sum(W_Data$x_70>120, na.rm = TRUE)
 #more strict
 #sum(W_Data$x_90>120, na.rm = TRUE)
 
+W_Data$H[W_Data$x_70>120] <- NA
 W_Data$LE[W_Data$x_70>120] <- NA
 W_Data$co2_flux[W_Data$x_70>120] <- NA
 
-#filter flux on sensor faceing 190 filter behind tower 350 to 20 degree
+#filter flux on sensor facing 190 filter behind tower 350 to 20 degree
+
+
+W_Data$H[W_Data$wind_dir>350] <- NA
 
 W_Data$LE[W_Data$wind_dir>350] <- NA
 W_Data$co2_flux[W_Data$wind_dir<20] <- NA
@@ -158,6 +163,11 @@ W_Data$co2_flux[W_Data$Rs_incoming_Avg<=0 & W_Data$co2_flux<0] <- NA
 #sum(W_Data$LE<(-20), na.rm = TRUE)
 W_Data$LE[W_Data$LE>600] <- NA
 W_Data$LE[W_Data$LE<(-20)] <- NA
+
+
+#remove H flux <-200 and > 600
+W_Data$LE[W_Data$H>600] <- NA
+W_Data$LE[W_Data$H<(-200)] <- NA
 
 
 #Check Rg set minimum to 0
@@ -271,7 +281,11 @@ S_Data<-select(W_Data,Year,DoY,Hour,NEE=co2_flux,LE,H,Ustar,Rg=Rs_incoming_Avg,R
 
 #ReddyProc needs full days start at 0 end at 23.5
 # trim to start and end
-S_Data<-filter(S_Data,Year==2015 & DoY>181 | Year==2016 )
+
+#S_Data<-filter(S_Data,Year==2015 & DoY>181 | Year==2016 )
+
+S_Data<-filter(S_Data,Year==2015 & DoY>183 | Year==2016 )
+
 #S_Data<-slice(S_Data,2:nrow(S_Data))
 
 #ReddyProc header
