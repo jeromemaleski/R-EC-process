@@ -19,7 +19,7 @@ data2 <- read_tsv(
 )
 
 #get header
-hhh <- read.table("out/OgletreeResults.txt",sep="\t", skip = 0, nrows = 1) # get the header
+hhh <- read.table("out/OgeltreeResults.txt",sep="\t", skip = 0, nrows = 1) # get the header
 header <- lapply(hhh, as.character)
 colnames(data2) <- header #put the header on Data
 
@@ -34,10 +34,11 @@ data2$Rain[is.na(data2$Rain)]<-0
 #change column names that R cant work with
 names(data2)[names(data2) == 'Date Time'] <- 'dt'
 
-# convert to g /m2 /hh
-data2 %>% mutate(NEEgmhh=((NEE_WithUstar_f*44.01*60*30) /(10^6)))->data2
-data2 %>% mutate(GPPgmhh=((GPP_WithUstar_f*44.01*60*30) /(10^6)))->data2
-data2 %>% mutate(Recogmhh=((Reco_WithUstar*44.01*60*30) /(10^6)))->data2
+# convert umol /m2 /s to g /m2 /hh
+# 60 seconds 30 min mol C = 12.01g  u=10^-6
+data2 %>% mutate(NEEgmhh=((NEE_WithUstar_f*12.01*60*30) /(10^6)))->data2
+data2 %>% mutate(GPPgmhh=((GPP_WithUstar_f*12.01*60*30) /(10^6)))->data2
+data2 %>% mutate(Recogmhh=((Reco_WithUstar*12.01*60*30) /(10^6)))->data2
 
 #rho=1000 kg/m3 Lv = 2.5*10^6   
 # H= rho * lv * E
@@ -45,9 +46,9 @@ data2 %>% mutate(Recogmhh=((Reco_WithUstar*44.01*60*30) /(10^6)))->data2
 #  H/rho = E conver to mm per m2 per hh
 # H is W/m2/hh
 
-LE=279
-ET=0.413
-ETC=((LE*60*60) /(2.5*10^6))
+#LE=279
+#ET=0.413
+#ETC=((LE*60*60) /(2.5*10^6))
 
 
 
@@ -59,6 +60,25 @@ data2 %>% mutate(LEgmhh=((LE_WithUstar_f*60*30) /(2.5*10^6)))->data2
 ggplot(data2, aes(dt)) + 
   geom_line(aes(y = cumsum(LEgmhh))) + 
   geom_line(aes(y = cumsum(Rain)))
+
+ggplot(data2, aes(dt)) + 
+  geom_line(aes(y = cumsum(NEEgmhh)))
+
+ggplot(data2_2016, aes(dt)) + 
+  geom_line(aes(y = cumsum(NEEgmhh)))
+
+ggplot(data2_2016, aes(dt)) + 
+  geom_line(aes(y = cumsum(GPPgmhh)))
+
+ggplot(data2, aes(dt)) + 
+  geom_line(aes(y = cumsum(Recogmhh)))
+
+ggplot(data2, aes(dt)) + 
+  geom_line(aes(y = cumsum(Recogmhh)))
+
+ggplot(data2_2016, aes(dt)) + 
+  geom_line(aes(y = cumsum(NEEgmhh)))
+
 
 ggplot(data2, aes(dt)) + 
   
@@ -93,6 +113,15 @@ data2 %>% group_by(Year) %>% mutate (cumLE=cumsum(LEgmhh)) ->data2
 
 data2_2015<-filter(data2,Year==2015)
 data2_2016<-filter(data2,Year==2016)
+
+#misc total 2016
+
+sum(data2_2016$LEgmhh)
+sum(data2_2016$NEEgmhh)
+sum(data2_2016$GPPgmhh)
+sum(data2_2016$Recogmhh)
+sum(data2_2016$Rain,na.rm=TRUE)
+
 
 
 #misc fall 2015
