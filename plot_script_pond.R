@@ -19,7 +19,7 @@ data2 <- read_tsv(
 )
 
 #get header
-hhh <- read.table("out/OgeltreeResults.txt",sep="\t", skip = 0, nrows = 1) # get the header
+hhh <- read.table("out/PonderResults.txt",sep="\t", skip = 0, nrows = 1) # get the header
 header <- lapply(hhh, as.character)
 colnames(data2) <- header #put the header on Data
 
@@ -32,9 +32,11 @@ data2
 #change column names that R cant work with
 names(data2)[names(data2) == 'Date Time'] <- 'dt'
 
-# convert to g /m2 /hh
-data2 %>% mutate(NEEgmhh=((NEE_WithUstar_f*44.01*60*30) /(10^6)))->data2
-
+# convert umol /m2 /s to g /m2 /hh
+# 60 seconds 30 min mol C = 12.01g  u=10^-6
+data2 %>% mutate(NEEgmhh=((NEE_WithUstar_f*12.01*60*30) /(10^6)))->data2
+data2 %>% mutate(GPPgmhh=((GPP_WithUstar_f*12.01*60*30) /(10^6)))->data2
+data2 %>% mutate(Recogmhh=((Reco_WithUstar*12.01*60*30) /(10^6)))->data2
 #rho=1000 kg/m3 Lv = 2.5*10^6    1000*2.5*10^6*(1/1000)
 
 #  H/rho = E conver to mm per m2 per hh
@@ -48,10 +50,6 @@ sum(data2$NEEgmhh)
 
 maizePlant=as.numeric(strptime("2016-03-14","%Y-%m-%d"))
 maizeHarvest=as.numeric(strptime("2016-08-08","%Y-%m-%d"))
-
-miscanthusHarvest1
-miscanthusHarvest1
-miscanthusHarvest1
 
 
 #simple scatter plots of data
@@ -82,6 +80,31 @@ p<-ggplot(data2,aes(x=dt,y=GPP_WithUstar_f))+
 data2 %>% group_by(Year) %>% mutate (cumNEE=cumsum(NEEgmhh)) ->data2
 
 data2_2016<-filter(data2,Year==2016)
+
+
+ggplot(data2, aes(dt)) + 
+  geom_line(aes(y = cumsum(NEEgmhh)))
+
+ggplot(data2_2016, aes(dt)) + 
+  geom_line(aes(y = cumsum(NEEgmhh)))
+
+
+#2016 annual sums
+
+sum(data2_2016$LEgmhh)
+sum(data2_2016$NEEgmhh)
+sum(data2_2016$GPPgmhh)
+sum(data2_2016$Recogmhh)
+sum(data2_2016$Rain,na.rm=TRUE)
+
+
+
+
+
+
+
+
+
 
 p<-ggplot(data2_2016,aes(x=dt,y=cumNEE*.01))+
   geom_point()+
