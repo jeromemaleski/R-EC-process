@@ -109,7 +109,7 @@ sum(!is.na(W_Data$co2_flux))
 #sum(W_Data$qc_LE>1, na.rm = TRUE)
 #sum(W_Data$qc_co2_flux>1, na.rm = TRUE)
 
-W_Data$LE[W_Data$qc_H>1] <- NA
+W_Data$H[W_Data$qc_H>1] <- NA
 W_Data$LE[W_Data$qc_LE>1] <- NA
 W_Data$co2_flux[W_Data$qc_co2_flux>1] <- NA
 
@@ -218,7 +218,7 @@ min(W_Data$RH,na.rm=TRUE)
 max(W_Data$RH_tmpr_rh_mean,na.rm=TRUE)
 min(W_Data$RH_tmpr_rh_mean,na.rm=TRUE)
 
-
+W_Data$RH_tmpr_rh_mean[W_Data$RH_tmpr_rh_mean>100] <- 100
 #ggplot(W_Data,aes(x=dt,y=RH_tmpr_rh_mean))+geom_point()
 #ggplot(W_Data,aes(x=dt,y=RH))+geom_point()
 
@@ -284,7 +284,7 @@ S_Data<-select(W_Data,Year,DoY,Hour,NEE=co2_flux,LE,H,Ustar,Rg=Rs_incoming_Avg,R
 
 #S_Data<-filter(S_Data,Year==2015 & DoY>181 | Year==2016 )
 
-S_Data<-filter(S_Data,Year==2015 & DoY>183 | Year==2016 )
+S_Data<-filter(S_Data,Year==2015 & DoY>181 | Year==2016 )
 
 #S_Data<-slice(S_Data,2:nrow(S_Data))
 

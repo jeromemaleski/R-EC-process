@@ -2,6 +2,9 @@
 #merge and filter EC and biomet data for
 #ponder 
 #
+#ponder station is out from 8/5/2016 8:30 till 10/18/2016 15:30
+#replace biomet data with data from ogletree 
+#Rg, Rnet, rH, Tair
 #
 #last edit 10/02/2017
 
@@ -46,6 +49,14 @@ dt <- as.POSIXct(EC_Data[, "date"],"%Y-%m-%d %H:%M")
 dt<-as.data.frame(dt,tz="America/New_York")
 EC_Data<-bind_cols(dt,EC_Data)
 
+#also need ogltree biomet for merge
+# get station biomet
+Met_Data2<-GetData("data/ogletreeBiomet.csv")
+#creat posix time for Biomet
+dt <- as.POSIXct(Met_Data2[, "TIMESTAMP"],"%Y-%m-%d %H:%M:%S")
+dt<-as.data.frame(dt,tz="America/New_York")
+Met_Data2<-bind_cols(dt,Met_Data2)
+Met_Data2<-arrange(Met_Data2,dt)
 
 
 #the cambell biomet data has many calculations including 
@@ -77,6 +88,31 @@ EC_Data<-bind_cols(dt,EC_Data)
 W_Data<-full_join(Met_Data,EC_Data,by="dt")
 #sort by date
 W_Data<-arrange(W_Data,dt)
+
+#add ogletree data
+#Rg=Rs_incoming_Avg,Rnet=Rn_Avg,rH=RH_tmpr_rh_mean,Tair=T_tmpr_rh_mean
+#ponder station is out from 8/5/2016 8:30 till 10/18/2016 15:30
+#replace biomet data with data from ogletree 
+#Rg, Rnet, rH, Tair
+#
+p<-ggplot(W_Data,aes(x=dt,y=Rs_incoming_Avg))+
+  geom_point()
+p
+
+p<-ggplot(Met_Data2,aes(x=dt,y=Rs_incoming_Avg))+
+  geom_point()
+p
+
+
+
+start="2016-8-05 09:00"
+end="2016-10-18 15:00"  
+
+W_Data$Rs_incoming_Avg[W_Data$dt >= start & W_Data$dt <= end] <- Met_Data2$Rs_incoming_Avg[Met_Data2$dt >= start & Met_Data2$dt <= end]
+W_Data$Rn_Avg[W_Data$dt >= start & W_Data$dt <= end] <- Met_Data2$Rn_Avg[Met_Data2$dt >= start & Met_Data2$dt <= end]
+W_Data$RH_tmpr_rh_mean[W_Data$dt >= start & W_Data$dt <= end] <- Met_Data2$RH_tmpr_rh_mean[Met_Data2$dt >= start & Met_Data2$dt <= end]
+W_Data$T_tmpr_rh_mean[W_Data$dt >= start & W_Data$dt <= end] <- Met_Data2$T_tmpr_rh_mean[Met_Data2$dt >= start & Met_Data2$dt <= end]
+
 
 
 
@@ -112,6 +148,7 @@ sum(!is.na(W_Data$co2_flux))
 #sum(W_Data$qc_LE>1, na.rm = TRUE)
 #sum(W_Data$qc_co2_flux>1, na.rm = TRUE)
 
+W_Data$H[W_Data$qc_H>1] <- NA
 W_Data$LE[W_Data$qc_LE>1] <- NA
 W_Data$co2_flux[W_Data$qc_co2_flux>1] <- NA
 
@@ -121,10 +158,15 @@ W_Data$co2_flux[W_Data$qc_co2_flux>1] <- NA
 #ggplot(W_Data,aes(x=dt,y=co2_flux))+geom_point()
 
 
-ft<-filter(W_Data,(wind_dir>260 & dt >= start & dt <= end))
-
+#ft<-filter(W_Data,(wind_dir>260 & dt >= start & dt <= end))
+#filter side of feild toward pond
 start="2016-5-19 00:00"
 end="2016-8-5 23:30"  
+
+W_Data$H[W_Data$wind_dir>260 & W_Data$dt >= start & W_Data$dt <= end] <- NA
+W_Data$H[W_Data$wind_dir<90 & W_Data$dt >= start & W_Data$dt <= end] <- NA
+
+
 W_Data$co2_flux[W_Data$wind_dir>260 & W_Data$dt >= start & W_Data$dt <= end] <- NA
 W_Data$co2_flux[W_Data$wind_dir<90 & W_Data$dt >= start & W_Data$dt <= end] <- NA
 
@@ -145,16 +187,12 @@ W_Data$LE[W_Data$wind_dir<90 & W_Data$dt >= start & W_Data$dt <= end] <- NA
 # ?case_when
 
 #remove flux between 5/11/2016 and 5/19/2016 becasue irgason was to low compared to plant 
-end="2016-5-19 16:00"
 start="2016-5-11 00:00"  
+end="2016-5-19 16:00"
+
+W_Data$H[W_Data$dt >= start & W_Data$dt <= end] <- NA
+W_Data$co2_flux[W_Data$dt >= start & W_Data$dt <= end] <- NA
 W_Data$LE[W_Data$dt >= start & W_Data$dt <= end] <- NA
-W_Data$LE[W_Data$dt >= start & W_Data$dt <= end] <- NA
-
-
-W_Data$LE[W_Data$wind_dir>260 & dt >= start & dt <= end] <- NA
-W_Data$LE[W_Data$wind_dir<90 & dt >= start & dt <= end] <- NA
-
-
 
 
 #max min filters
@@ -177,6 +215,10 @@ W_Data$co2_flux[W_Data$Rs_incoming_Avg<=0 & W_Data$co2_flux<0] <- NA
 #sum(W_Data$LE<(-20), na.rm = TRUE)
 W_Data$LE[W_Data$LE>600] <- NA
 W_Data$LE[W_Data$LE<(-20)] <- NA
+
+#remove H flux <-200 and > 600
+W_Data$LE[W_Data$H>600] <- NA
+W_Data$LE[W_Data$H<(-200)] <- NA
 
 
 #Check Rg set minimum to 0
